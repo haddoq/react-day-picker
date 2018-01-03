@@ -56,8 +56,8 @@ export default class Weekdays extends Component {
     return (
       <div className={classNames.weekdays} role="rowgroup">
         <div className={classNames.weekdaysRow} role="row">
-          {showWeekNumbers && <div className={classNames.weekday} />}
           {days}
+          {showWeekNumbers && <div className={classNames.weekday} />}
         </div>
       </div>
     );
