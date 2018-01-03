@@ -186,6 +186,7 @@ export default class Month extends Component {
                 className={classNames.week}
                 role="row"
               >
+                {week.map(this.renderDay)}
                 {showWeekNumbers && (
                   <div
                     className={classNames.weekNumber}
@@ -207,7 +208,6 @@ export default class Month extends Component {
                     {this.props.renderWeek(weekNumber, week, month)}
                   </div>
                 )}
-                {week.map(this.renderDay)}
               </div>
             );
           })}
