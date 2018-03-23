@@ -66,6 +66,7 @@ export default class DayPickerInput extends React.Component {
     dayPickerProps: PropTypes.object,
     hideOnDayClick: PropTypes.bool,
     clickUnselectsDay: PropTypes.bool,
+    keepFocus: PropTypes.bool,
     component: PropTypes.any,
     overlayComponent: PropTypes.any,
 
@@ -93,6 +94,7 @@ export default class DayPickerInput extends React.Component {
     showOverlay: false,
     hideOnDayClick: true,
     clickUnselectsDay: false,
+    keepFocus: true,
     component: 'input',
     inputProps: {},
     overlayComponent: ({ children, classNames }) => (
@@ -114,7 +116,6 @@ export default class DayPickerInput extends React.Component {
     this.state.showOverlay = props.showOverlay;
 
     this.hideAfterDayClick = this.hideAfterDayClick.bind(this);
-    this.handleContainerMouseDown = this.handleContainerMouseDown.bind(this);
     this.handleInputClick = this.handleInputClick.bind(this);
     this.handleInputFocus = this.handleInputFocus.bind(this);
     this.handleInputBlur = this.handleInputBlur.bind(this);
@@ -122,6 +123,9 @@ export default class DayPickerInput extends React.Component {
     this.handleInputKeyDown = this.handleInputKeyDown.bind(this);
     this.handleInputKeyUp = this.handleInputKeyUp.bind(this);
     this.handleDayClick = this.handleDayClick.bind(this);
+    this.handleMonthChange = this.handleMonthChange.bind(this);
+    this.handleOverlayFocus = this.handleOverlayFocus.bind(this);
+    this.handleOverlayBlur = this.handleOverlayBlur.bind(this);
   }
 
   componentWillReceiveProps(nextProps) {
@@ -163,13 +167,12 @@ export default class DayPickerInput extends React.Component {
   componentWillUnmount() {
     clearTimeout(this.clickTimeout);
     clearTimeout(this.hideTimeout);
-    clearTimeout(this.blurTimeout);
   }
 
   getStateFromProps(props) {
     const { dayPickerProps, formatDate, format } = props;
     let { value } = props;
-    let month;
+
     let day;
     if (props.value) {
       if (isDate(props.value)) {
@@ -178,13 +181,12 @@ export default class DayPickerInput extends React.Component {
       } else {
         day = props.parseDate(props.value, format, dayPickerProps.locale);
       }
-      if (day) {
-        month = day;
-      }
-    } else {
-      // Otherwise display the month coming from `dayPickerProps` or the current month
-      month = dayPickerProps.initialMonth || dayPickerProps.month || new Date();
     }
+
+    // Use DayPicker's controlled month. Then try the current `value`. Finally default to today.
+    const month =
+      dayPickerProps.initialMonth || dayPickerProps.month || day || new Date();
+
     return {
       value,
       month,
@@ -202,7 +204,7 @@ export default class DayPickerInput extends React.Component {
 
   input = null;
   daypicker = null;
-  clickedInside = false;
+  overlayNode = null;
   clickTimeout = null;
   hideTimeout = null;
 
@@ -245,9 +247,7 @@ export default class DayPickerInput extends React.Component {
    * @memberof DayPickerInput
    */
   showDayPicker() {
-    this.setState({
-      showOverlay: true,
-    });
+    this.setState({ showOverlay: true });
   }
 
   /**
@@ -256,9 +256,7 @@ export default class DayPickerInput extends React.Component {
    * @memberof DayPickerInput
    */
   hideDayPicker() {
-    this.setState({
-      showOverlay: false,
-    });
+    this.setState({ showOverlay: false });
   }
 
   hideAfterDayClick() {
@@ -266,15 +264,6 @@ export default class DayPickerInput extends React.Component {
       return;
     }
     this.hideTimeout = setTimeout(() => this.hideDayPicker(), HIDE_TIMEOUT);
-  }
-
-  handleContainerMouseDown() {
-    this.clickedInside = true;
-    // The input's onBlur method is called from a queue right after the onMouseDown event.
-    // setTimeout adds another callback in the queue, which is called after the onBlur event.
-    this.clickTimeout = setTimeout(() => {
-      this.clickedInside = false;
-    }, 0);
   }
 
   handleInputClick(e) {
@@ -295,16 +284,27 @@ export default class DayPickerInput extends React.Component {
 
   handleInputBlur(e) {
     this.setState({
-      showOverlay: this.clickedInside,
+      showOverlay:
+        this.overlayNode && this.overlayNode.contains(e.relatedTarget),
     });
-    // Force input's focus if blur event was caused by clicking inside the overlay
-    if (this.clickedInside) {
-      this.blurTimeout = setTimeout(() => this.input.focus(), 0);
-    }
     if (this.props.inputProps.onBlur) {
       e.persist();
       this.props.inputProps.onBlur(e);
     }
+  }
+
+  handleOverlayFocus(e) {
+    if (this.props.keepFocus === true) {
+      e.preventDefault();
+      this.input.focus();
+    }
+  }
+
+  handleOverlayBlur(e) {
+    this.setState({
+      showOverlay:
+        this.overlayNode && this.overlayNode.contains(e.relatedTarget),
+    });
   }
 
   handleInputChange(e) {
@@ -322,14 +322,13 @@ export default class DayPickerInput extends React.Component {
     const { value } = e.target;
     if (value.trim() === '') {
       this.setState({ value });
-      if (onDayChange) {
-        onDayChange(undefined, {});
-      }
+      if (onDayChange) onDayChange(undefined, {});
       return;
     }
     const day = parseDate(value, format, dayPickerProps.locale);
     if (!day) {
       this.setState({ value });
+      if (onDayChange) onDayChange(undefined, {});
       return;
     }
     this.updateState(day, value);
@@ -337,7 +336,7 @@ export default class DayPickerInput extends React.Component {
 
   handleInputKeyDown(e) {
     if (e.keyCode === TAB) {
-      this.setState({ showOverlay: false });
+      this.hideDayPicker();
     }
     if (this.props.inputProps.onKeyDown) {
       e.persist();
@@ -348,12 +347,23 @@ export default class DayPickerInput extends React.Component {
   handleInputKeyUp(e) {
     // Hide the overlay if the ESC key is pressed
     if (e.keyCode === ESC) {
-      this.setState({ showOverlay: false });
+      this.hideDayPicker();
     }
     if (this.props.inputProps.onKeyUp) {
       e.persist();
       this.props.inputProps.onKeyUp(e);
     }
+  }
+
+  handleMonthChange(month) {
+    this.setState({ month }, () => {
+      if (
+        this.props.dayPickerProps &&
+        this.props.dayPickerProps.onMonthChange
+      ) {
+        this.props.dayPickerProps.onMonthChange(month);
+      }
+    });
   }
 
   handleDayClick(day, modifiers, e) {
@@ -430,32 +440,35 @@ export default class DayPickerInput extends React.Component {
     }
     const Overlay = this.props.overlayComponent;
     return (
-      <Overlay
-        classNames={classNames}
-        month={this.state.month}
-        selectedDay={selectedDay}
-        input={this.input}
+      <span
+        onFocus={this.handleOverlayFocus}
+        ref={el => (this.overlayNode = el)}
+        onBlur={this.handleOverlayBlur}
       >
-        <DayPicker
-          ref={el => (this.daypicker = el)}
-          onTodayButtonClick={onTodayButtonClick}
-          {...dayPickerProps}
+        <Overlay
+          classNames={classNames}
           month={this.state.month}
-          selectedDays={selectedDay}
-          onDayClick={this.handleDayClick}
-          onMonthChange={month => this.setState({ month })}
-        />
-      </Overlay>
+          selectedDay={selectedDay}
+          input={this.input}
+        >
+          <DayPicker
+            ref={el => (this.daypicker = el)}
+            onTodayButtonClick={onTodayButtonClick}
+            {...dayPickerProps}
+            month={this.state.month}
+            selectedDays={selectedDay}
+            onDayClick={this.handleDayClick}
+            onMonthChange={this.handleMonthChange}
+          />
+        </Overlay>
+      </span>
     );
   }
 
   render() {
     const Input = this.props.component;
     return (
-      <div
-        className={this.props.classNames.container}
-        onMouseDown={this.handleContainerMouseDown}
-      >
+      <div className={this.props.classNames.container}>
         <Input
           ref={el => (this.input = el)}
           placeholder={this.props.placeholder}

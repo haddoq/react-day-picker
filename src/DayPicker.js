@@ -15,7 +15,7 @@ import classNames from './classNames';
 import { ENTER, SPACE, LEFT, UP, DOWN, RIGHT } from './keys';
 
 export default class DayPicker extends Component {
-  static VERSION = '7.0.6';
+  static VERSION = '7.1.4';
 
   static propTypes = {
     // Rendering months
@@ -66,6 +66,7 @@ export default class DayPicker extends Component {
 
     // Customization
     showOutsideDays: PropTypes.bool,
+    enableOutsideDaysClick: PropTypes.bool,
     fixedWeeks: PropTypes.bool,
 
     // CSS and HTML
@@ -140,6 +141,7 @@ export default class DayPicker extends Component {
     locale: 'en',
     localeUtils: LocaleUtils,
     showOutsideDays: false,
+    enableOutsideDaysClick: true,
     fixedWeeks: false,
     canChangeMonth: true,
     reverseMonths: false,
@@ -298,7 +300,7 @@ export default class DayPicker extends Component {
   focusPreviousDay(dayNode) {
     const dayNodes = Helpers.getDayNodes(this.dayPicker, this.props.classNames);
     const dayNodeIndex = Helpers.nodeListToArray(dayNodes).indexOf(dayNode);
-
+    if (dayNodeIndex === -1) return;
     if (dayNodeIndex === 0) {
       this.showPreviousMonth(() => this.focusLastDayOfMonth());
     } else {
@@ -309,7 +311,7 @@ export default class DayPicker extends Component {
   focusNextDay(dayNode) {
     const dayNodes = Helpers.getDayNodes(this.dayPicker, this.props.classNames);
     const dayNodeIndex = Helpers.nodeListToArray(dayNodes).indexOf(dayNode);
-
+    if (dayNodeIndex === -1) return;
     if (dayNodeIndex === dayNodes.length - 1) {
       this.showNextMonth(() => this.focusFirstDayOfMonth());
     } else {
@@ -418,7 +420,10 @@ export default class DayPicker extends Component {
 
   handleDayClick = (day, modifiers, e) => {
     e.persist();
-    if (modifiers[this.props.classNames.outside]) {
+    if (
+      modifiers[this.props.classNames.outside] &&
+      this.props.enableOutsideDaysClick
+    ) {
       this.handleOutsideDayClick(day);
     }
     if (this.props.onDayClick) {
@@ -465,7 +470,7 @@ export default class DayPicker extends Component {
     if (!canChangeMonth) return null;
 
     const props = {
-      month: this.state.month,
+      month: this.state.currentMonth,
       classNames: this.props.classNames,
       className: this.props.classNames.navBar,
       nextMonth: this.getNextNavigableMonth(),

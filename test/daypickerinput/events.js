@@ -39,6 +39,24 @@ describe('DayPickerInput', () => {
       });
     });
 
+    describe('overlayfocus', () => {
+      afterEach(() => {
+        document.activeElement.blur();
+      });
+      it('should focus the input if keepFocus is true', () => {
+        const wrapper = mount(<DayPickerInput showOverlay keepFocus />);
+        wrapper.find('.DayPickerInput-Overlay').simulate('focus');
+        const instance = wrapper.instance();
+        expect(document.activeElement).toEqual(instance.input);
+      });
+      it('should not focus the input if keepFocus is false', () => {
+        const wrapper = mount(<DayPickerInput showOverlay keepFocus={false} />);
+        wrapper.find('.DayPickerInput-Overlay').simulate('focus');
+        const instance = wrapper.instance();
+        expect(document.activeElement).not.toEqual(instance.input);
+      });
+    });
+
     describe('blur', () => {
       it('should hide the overlay when the input is blurred', () => {
         const wrapper = mount(<DayPickerInput value="12/15/2017" />);
@@ -52,17 +70,14 @@ describe('DayPickerInput', () => {
         wrapper.find('input').simulate('blur');
         expect(onBlur).toHaveBeenCalledTimes(1);
       });
-      it('should focus the input if blur after clicking the overlay', done => {
-        const wrapper = mount(<DayPickerInput />);
-        wrapper.find('.DayPickerInput').simulate('mousedown');
-        const instance = wrapper.instance();
-        expect(instance.clickedInside).toBe(true);
-        expect(instance.clickTimeout).not.toBeNull();
-        wrapper.find('input').simulate('blur');
-        setTimeout(() => {
-          expect(document.activeElement).toEqual(instance.input);
-          done();
-        }, 1);
+    });
+
+    describe('overlayblur', () => {
+      it('should hide the overlay', () => {
+        const wrapper = mount(<DayPickerInput showOverlay keepFocus />);
+        wrapper.find('.DayPickerInput-Overlay').simulate('focus');
+        wrapper.find('.DayPickerInput-Overlay').simulate('blur');
+        expect(wrapper.find('.DayPicker')).toHaveLength(0);
       });
     });
 
@@ -92,12 +107,12 @@ describe('DayPickerInput', () => {
         input.simulate('change', { target: { value: 'foo' } });
         expect(wrapper.find('input')).toHaveProp('value', 'foo');
       });
-      it('should not call `onDayChange` if the value is not a valid date', () => {
+      it('should call `onDayChange` with `undefined` if the value is not a valid date', () => {
         const onDayChange = jest.fn();
         const wrapper = mount(<DayPickerInput onDayChange={onDayChange} />);
         const input = wrapper.find('input');
         input.simulate('change', { target: { value: 'foo' } });
-        expect(onDayChange).not.toHaveBeenCalled();
+        expect(onDayChange).toHaveBeenCalledWith(undefined, {});
       });
       it("should update the input's value and the displayed month", () => {
         const wrapper = mount(<DayPickerInput />);
@@ -251,7 +266,7 @@ describe('DayPickerInput', () => {
             value="2017-11-8"
             clickUnselectsDay
             dayPickerProps={{
-              month: new Date(2017, 1),
+              month: new Date(2017, 10),
               selectedDays: new Date(2017, 10, 8),
             }}
           />
@@ -271,7 +286,7 @@ describe('DayPickerInput', () => {
             value="2017-11-8"
             clickUnselectsDay
             dayPickerProps={{
-              month: new Date(2017, 1),
+              month: new Date(2017, 10),
               selectedDays: [new Date(2017, 10, 8), new Date(2017, 10, 7)],
             }}
           />
@@ -368,6 +383,41 @@ describe('DayPickerInput', () => {
         expect(selectedDays).toHaveLength(2);
         expect(selectedDays.at(0)).toHaveText('8');
         expect(selectedDays.at(1)).toHaveText('9');
+      });
+    });
+
+    describe('onMonthChange', () => {
+      it('should update state when month changes', () => {
+        const wrapper = mount(
+          <DayPickerInput
+            dayPickerProps={{
+              initialMonth: new Date(2015, 7),
+            }}
+          />
+        );
+        const instance = wrapper.instance();
+        instance.showDayPicker();
+        wrapper.update();
+        instance.getDayPicker().showNextMonth();
+        expect(instance.state.month.getMonth()).toEqual(8);
+      });
+
+      it('should call onMonthChange when month changes', () => {
+        const handleMonthChange = jest.fn();
+        const wrapper = mount(
+          <DayPickerInput
+            dayPickerProps={{
+              onMonthChange: handleMonthChange,
+              initialMonth: new Date(2015, 7),
+            }}
+          />
+        );
+        const instance = wrapper.instance();
+        instance.showDayPicker();
+        wrapper.update();
+        instance.getDayPicker().showNextMonth();
+        expect(handleMonthChange).toHaveBeenCalled();
+        expect(handleMonthChange.mock.calls[0][0].getMonth()).toEqual(8);
       });
     });
   });
