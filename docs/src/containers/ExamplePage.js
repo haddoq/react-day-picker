@@ -70,6 +70,9 @@ export default function ExamplePage({ children, title }) {
               <Menu.Item to="/examples/selected-range-enter">
                 Select range on mouse enter
               </Menu.Item>
+              <Menu.Item to="/examples/selected-week">
+                Selecting an entire week
+              </Menu.Item>
             </Menu>
             <Menu subtitle="Disabling days">
               <Menu.Item to="/examples/disabled">
@@ -91,6 +94,9 @@ export default function ExamplePage({ children, title }) {
               </Menu.Item>
               <Menu.Item to="/examples/input-moment">
                 Using moment.js to parse and format dates
+              </Menu.Item>
+              <Menu.Item to="/examples/input-date-fns">
+                Using date-fns to parse and format dates
               </Menu.Item>
               <Menu.Item to="/examples/input-from-to">
                 Range with two inputs

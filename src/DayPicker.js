@@ -14,8 +14,8 @@ import classNames from './classNames';
 
 import { ENTER, SPACE, LEFT, UP, DOWN, RIGHT } from './keys';
 
-export default class DayPicker extends Component {
-  static VERSION = '7.1.4';
+export class DayPicker extends Component {
+  static VERSION = '7.1.9';
 
   static propTypes = {
     // Rendering months
@@ -157,16 +157,32 @@ export default class DayPicker extends Component {
 
   constructor(props) {
     super(props);
-    this.state = this.getStateFromProps(props);
+
+    const currentMonth = this.getCurrentMonthFromProps(props);
+    this.state = { currentMonth };
   }
 
-  componentWillReceiveProps(nextProps) {
-    if (this.props.month !== nextProps.month) {
-      this.setState(this.getStateFromProps(nextProps));
+  componentDidUpdate(prevProps) {
+    // Changing the `month` props means changing the current displayed month
+    if (
+      prevProps.month !== this.props.month &&
+      !DateUtils.isSameMonth(prevProps.month, this.props.month)
+    ) {
+      const currentMonth = this.getCurrentMonthFromProps(this.props);
+      // eslint-disable-next-line react/no-did-update-set-state
+      this.setState({ currentMonth });
     }
   }
 
-  getStateFromProps = props => {
+  /**
+   * Return the month to be shown in the calendar based on the component props.
+   *
+   * @param {Object} props
+   * @returns Date
+   * @memberof DayPicker
+   * @private
+   */
+  getCurrentMonthFromProps(props) {
     const initialMonth = Helpers.startOfMonth(
       props.month || props.initialMonth
     );
@@ -188,8 +204,8 @@ export default class DayPicker extends Component {
         1 - this.props.numberOfMonths
       );
     }
-    return { currentMonth };
-  };
+    return currentMonth;
+  }
 
   getNextNavigableMonth() {
     return DateUtils.addMonths(
@@ -556,7 +572,8 @@ export default class DayPicker extends Component {
         <div
           className={this.props.classNames.wrapper}
           tabIndex={
-            this.props.canChangeMonth && this.props.tabIndex
+            this.props.canChangeMonth &&
+            typeof this.props.tabIndex !== 'undefined'
               ? this.props.tabIndex
               : -1
           }
@@ -578,3 +595,7 @@ export default class DayPicker extends Component {
 DayPicker.DateUtils = DateUtils;
 DayPicker.LocaleUtils = LocaleUtils;
 DayPicker.ModifiersUtils = ModifiersUtils;
+
+export { DateUtils, LocaleUtils, ModifiersUtils };
+
+export default DayPicker;

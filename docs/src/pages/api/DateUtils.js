@@ -55,7 +55,14 @@ console.log(newRange.from) // 2015-05-24`}</CodeBlock>
       <p>
         Clone <code>date</code> returning a new Date with the same time.
       </p>
-
+      <h3>
+        <Anchor id="isDate" />
+        isDate <code>(value) ⇒ Boolean</code>
+      </h3>
+      <p>
+        Returns <code>true</code> if <code>value</code> is a valid Javascript
+        Date.
+      </p>
       <h3>
         <Anchor id="isDayAfter" />
         isDayAfter <code>(day1: Date, day2: Date) ⇒ boolean</code>
@@ -119,6 +126,14 @@ console.log(newRange.from) // 2015-05-24`}</CodeBlock>
       <p>
         Return <code>true</code> if <code>day1</code> and
         <code>day2</code> are the same day.
+      </p>
+      <h3>
+        <Anchor id="isSameMonth" />
+        isSameMonth <code>(day1: ?Date, day2: ?Date) ⇒ boolean</code>
+      </h3>
+      <p>
+        Return <code>true</code> if <code>day1</code> and
+        <code>day2</code> fall in the same month.
       </p>
     </ApiDocs>
   </DocPage>

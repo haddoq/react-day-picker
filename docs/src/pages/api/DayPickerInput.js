@@ -178,8 +178,7 @@ function MyDayPickerInput(props) {
       <p>
         Keep focus on the input field after switching the focus into the
         overlay. You may want to disable the focus on the input field when using
-        an an
-        <a href="#overlayComponent">overlayComponent</a>.
+        an <a href="#overlayComponent">overlayComponent</a>.
       </p>
 
       <h3>
@@ -187,8 +186,8 @@ function MyDayPickerInput(props) {
         overlayComponent <code>React.Component</code>
       </h3>
       <p>
-        A React element or constructor to use as overlay. The element will
-        receive the following props:
+        A custom React Element or Component to use for the overlay. The element
+        will receive the following props:
       </p>
       <ul>
         <li>
@@ -200,9 +199,39 @@ function MyDayPickerInput(props) {
         <li>
           <code>input: DOM Element</code> The input field
         </li>
+        <li>
+          <code>classNames: Object</code> The input field
+        </li>
+        <li>
+          <code>...props: Object</code> Other props to pass to the HTML element
+          to handle interaction with the calendar
+        </li>
       </ul>
+      <CodeBlock>
+        {`import React from 'react';
+import { DayPickerInput } from 'react-day-picker';
+
+function OverlayComponent({ children, ...props }) {
+  return (
+    <div {...props}}>
+      <p>My custom things</p>
+      /* include the calendar */
+      { children }
+      <p>Some content below the calendar</p>
+    </div>
+  );
+}
+
+function MyDayPickerInput() {
+  return <DayPickerInput overlayComponent={OverlayComponent} />;
+}`}
+      </CodeBlock>
       <p>
-        See also <Link to="/examples/input-custom-overlay">this example</Link>.
+        As default, the input field keep always the focus when interacting with
+        the calendar. However this may cause problems if the custom overlay has
+        an input field, so you may need to set{' '}
+        <code>{`keepFocus={false}`}</code>. See{' '}
+        <Link to="/examples/input-custom-overlay">this example</Link>.
       </p>
 
       <h3>
@@ -263,13 +292,17 @@ function MyDayPickerInput(props) {
 
       <h3>
         <Anchor id="onDayChange" />
-        onDayChange <code>(day: Date, modifiers: Object) ⇒ void</code>
+        onDayChange <code>(day: ?Date, modifiers: Object) ⇒ void</code>
       </h3>
       <p>
-        Handler function called when the user types a valid day (according to
-        the <code>format</code> prop) or when a day is clicked on the calendar.
-        If the day is not valid, day and modifiers arguments will be{' '}
-        <code>undefined</code> (useful to display validation warnings).
+        Handler function called when the user types a valid day – according to
+        the{' '}
+        <code>
+          <a href="#format">format</a>
+        </code>{' '}
+        prop – or when a day is clicked on the calendar. If the typed value is
+        empty or not valid, `day` is <code>undefined</code> and `modifiers` is
+        an empty object.
       </p>
 
       <hr />

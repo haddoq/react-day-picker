@@ -2,16 +2,47 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 import DayPicker from './DayPicker';
+import { isSameMonth, isDate } from './DateUtils';
 import { getModifiersForDay } from './ModifiersUtils';
 import { ESC, TAB } from './keys';
 
 // When clicking on a day cell, overlay will be hidden after this timeout
 export const HIDE_TIMEOUT = 100;
 
-function isDate(date) {
-  return date instanceof Date && !isNaN(date.valueOf());
+/**
+ * The default component used as Overlay.
+ *
+ * @param {Object} props
+ */
+export function OverlayComponent({
+  input,
+  selectedDay,
+  month,
+  children,
+  classNames,
+  ...props
+}) {
+  return (
+    <div className={classNames.overlayWrapper} {...props}>
+      <div className={classNames.overlay}>{children}</div>
+    </div>
+  );
 }
 
+OverlayComponent.propTypes = {
+  input: PropTypes.any,
+  selectedDay: PropTypes.any,
+  month: PropTypes.instanceOf(Date),
+  children: PropTypes.node,
+  classNames: PropTypes.object,
+};
+
+/**
+ * The default function used to format a Date to String, passed to the `format`
+ * prop.
+ * @param {Date} d
+ * @return {String}
+ */
 export function defaultFormat(d) {
   if (isDate(d)) {
     const year = d.getFullYear();
@@ -22,6 +53,12 @@ export function defaultFormat(d) {
   return '';
 }
 
+/**
+ * The default function used to parse a String as Date, passed to the `parse`
+ * prop.
+ * @param {String} str
+ * @return {Date}
+ */
 export function defaultParse(str) {
   if (typeof str !== 'string') {
     return undefined;
@@ -35,6 +72,7 @@ export function defaultParse(str) {
   const day = parseInt(split[2], 10);
   if (
     isNaN(year) ||
+    String(year).length > 4 ||
     isNaN(month) ||
     isNaN(day) ||
     day <= 0 ||
@@ -97,11 +135,7 @@ export default class DayPickerInput extends React.Component {
     keepFocus: true,
     component: 'input',
     inputProps: {},
-    overlayComponent: ({ children, classNames }) => (
-      <div className={classNames.overlayWrapper}>
-        <div className={classNames.overlay}>{children}</div>
-      </div>
-    ),
+    overlayComponent: OverlayComponent,
     classNames: {
       container: 'DayPickerInput',
       overlayWrapper: 'DayPickerInput-OverlayWrapper',
@@ -112,7 +146,7 @@ export default class DayPickerInput extends React.Component {
   constructor(props) {
     super(props);
 
-    this.state = this.getStateFromProps(props);
+    this.state = this.getInitialStateFromProps(props);
     this.state.showOverlay = props.showOverlay;
 
     this.hideAfterDayClick = this.hideAfterDayClick.bind(this);
@@ -128,68 +162,74 @@ export default class DayPickerInput extends React.Component {
     this.handleOverlayBlur = this.handleOverlayBlur.bind(this);
   }
 
-  componentWillReceiveProps(nextProps) {
-    const monthFromProps = this.props.dayPickerProps.month;
-    const nextMonthFromProps = nextProps.dayPickerProps.month;
+  componentDidUpdate(prevProps) {
+    const newState = {};
 
-    const selectedDaysFromProps = this.props.dayPickerProps.selectedDays;
-    const nextSelectedDaysFromProps = nextProps.dayPickerProps.selectedDays;
+    // Current props
+    const { value, formatDate, format, dayPickerProps } = this.props;
 
-    let nextValue = nextProps.value;
-    const currentValue = this.props.value;
-
-    const monthChanged =
-      (nextMonthFromProps && !monthFromProps) ||
-      (nextMonthFromProps &&
-        (nextMonthFromProps.getFullYear() !== monthFromProps.getFullYear() ||
-          nextMonthFromProps.getMonth() !== monthFromProps.getMonth()));
-
-    if (nextValue !== currentValue) {
-      if (isDate(nextValue)) {
-        nextValue = this.props.formatDate(
-          nextValue,
-          this.props.format,
-          this.props.dayPickerProps.locale
-        );
+    // Update the input value if the `value` prop has changed
+    if (value !== prevProps.value) {
+      if (isDate(value)) {
+        newState.value = formatDate(value, format, dayPickerProps.locale);
+      } else {
+        newState.value = value;
       }
-      this.setState({
-        value: nextValue,
-      });
     }
-    if (monthChanged) {
-      this.setState({ month: nextMonthFromProps });
+
+    // Update the month if the months from props changed
+    const prevMonth = prevProps.dayPickerProps.month;
+    if (
+      dayPickerProps.month &&
+      dayPickerProps.month !== prevMonth &&
+      !isSameMonth(dayPickerProps.month, prevMonth)
+    ) {
+      newState.month = dayPickerProps.month;
     }
-    if (selectedDaysFromProps !== nextSelectedDaysFromProps) {
-      this.setState({ selectedDays: nextSelectedDaysFromProps });
+
+    // Updated the selected days from props if they changed
+    if (prevProps.dayPickerProps.selectedDays !== dayPickerProps.selectedDays) {
+      newState.selectedDays = dayPickerProps.selectedDays;
+    }
+
+    if (Object.keys(newState).length > 0) {
+      // eslint-disable-next-line react/no-did-update-set-state
+      this.setState(newState);
     }
   }
 
   componentWillUnmount() {
     clearTimeout(this.clickTimeout);
     clearTimeout(this.hideTimeout);
+    clearTimeout(this.inputFocusTimeout);
+    clearTimeout(this.inputBlurTimeout);
+    clearTimeout(this.overlayBlurTimeout);
   }
 
-  getStateFromProps(props) {
-    const { dayPickerProps, formatDate, format } = props;
-    let { value } = props;
-
+  getInitialMonthFromProps(props) {
+    const { dayPickerProps, format } = props;
     let day;
     if (props.value) {
       if (isDate(props.value)) {
         day = props.value;
-        value = formatDate(props.value, format, dayPickerProps.locale);
       } else {
         day = props.parseDate(props.value, format, dayPickerProps.locale);
       }
     }
+    return (
+      dayPickerProps.initialMonth || dayPickerProps.month || day || new Date()
+    );
+  }
 
-    // Use DayPicker's controlled month. Then try the current `value`. Finally default to today.
-    const month =
-      dayPickerProps.initialMonth || dayPickerProps.month || day || new Date();
-
+  getInitialStateFromProps(props) {
+    const { dayPickerProps, formatDate, format } = props;
+    let { value } = props;
+    if (props.value && isDate(props.value)) {
+      value = formatDate(props.value, format, dayPickerProps.locale);
+    }
     return {
       value,
-      month,
+      month: this.getInitialMonthFromProps(props),
       selectedDays: dayPickerProps.selectedDays,
     };
   }
@@ -204,13 +244,15 @@ export default class DayPickerInput extends React.Component {
 
   input = null;
   daypicker = null;
-  overlayNode = null;
   clickTimeout = null;
   hideTimeout = null;
+  inputBlurTimeout = null;
+  inputFocusTimeout = null;
 
   /**
-   * Update the component's state and fire the `onDayChange` event
-   * passing the day's modifiers to it
+   * Update the component's state and fire the `onDayChange` event passing the
+   * day's modifiers to it.
+   *
    * @param {Date} day - Will be used for changing the month
    * @param {String} value - Input field value
    * @private
@@ -247,7 +289,19 @@ export default class DayPickerInput extends React.Component {
    * @memberof DayPickerInput
    */
   showDayPicker() {
-    this.setState({ showOverlay: true });
+    const { parseDate, format, dayPickerProps } = this.props;
+    const { value, showOverlay } = this.state;
+    if (showOverlay) {
+      return;
+    }
+    // Reset the current displayed month when showing the overlay
+    const month = value
+      ? parseDate(value, format, dayPickerProps.locale) // Use the month in the input field
+      : this.getInitialMonthFromProps(this.props); // Restore the month from the props
+    this.setState({
+      showOverlay: true,
+      month: month || this.state.month,
+    });
   }
 
   /**
@@ -256,6 +310,9 @@ export default class DayPickerInput extends React.Component {
    * @memberof DayPickerInput
    */
   hideDayPicker() {
+    if (this.state.showOverlay === false) {
+      return;
+    }
     this.setState({ showOverlay: false });
   }
 
@@ -276,17 +333,29 @@ export default class DayPickerInput extends React.Component {
 
   handleInputFocus(e) {
     this.showDayPicker();
+    // Set `overlayHasFocus` after a timeout so the overlay can be hidden when
+    // the input is blurred
+    this.inputFocusTimeout = setTimeout(() => {
+      this.overlayHasFocus = false;
+    }, 2);
     if (this.props.inputProps.onFocus) {
       e.persist();
       this.props.inputProps.onFocus(e);
     }
   }
 
+  // When the input is blurred, the overlay should disappear. However the input
+  // is blurred also when the user interacts with the overlay (e.g. the overlay
+  // get the focus by clicking it). In these cases, the overlay should not be
+  // hidden. There are different approaches to avoid hiding the overlay when
+  // this happens, but the only cross-browser hack we’ve found is to set all
+  // these timeouts in code before changing `overlayHasFocus`.
   handleInputBlur(e) {
-    this.setState({
-      showOverlay:
-        this.overlayNode && this.overlayNode.contains(e.relatedTarget),
-    });
+    this.inputBlurTimeout = setTimeout(() => {
+      if (!this.overlayHasFocus) {
+        this.hideDayPicker();
+      }
+    }, 1);
     if (this.props.inputProps.onBlur) {
       e.persist();
       this.props.inputProps.onBlur(e);
@@ -294,17 +363,20 @@ export default class DayPickerInput extends React.Component {
   }
 
   handleOverlayFocus(e) {
-    if (this.props.keepFocus === true) {
-      e.preventDefault();
-      this.input.focus();
+    e.preventDefault();
+    this.overlayHasFocus = true;
+    if (!this.props.keepFocus) {
+      return;
     }
+    this.input.focus();
   }
 
-  handleOverlayBlur(e) {
-    this.setState({
-      showOverlay:
-        this.overlayNode && this.overlayNode.contains(e.relatedTarget),
-    });
+  handleOverlayBlur() {
+    // We need to set a timeout otherwise IE11 will hide the overlay when
+    // focusing it
+    this.overlayBlurTimeout = setTimeout(() => {
+      this.overlayHasFocus = false;
+    }, 3);
   }
 
   handleInputChange(e) {
@@ -337,6 +409,8 @@ export default class DayPickerInput extends React.Component {
   handleInputKeyDown(e) {
     if (e.keyCode === TAB) {
       this.hideDayPicker();
+    } else {
+      this.showDayPicker();
     }
     if (this.props.inputProps.onKeyDown) {
       e.persist();
@@ -345,9 +419,10 @@ export default class DayPickerInput extends React.Component {
   }
 
   handleInputKeyUp(e) {
-    // Hide the overlay if the ESC key is pressed
     if (e.keyCode === ESC) {
       this.hideDayPicker();
+    } else {
+      this.showDayPicker();
     }
     if (this.props.inputProps.onKeyUp) {
       e.persist();
@@ -440,46 +515,44 @@ export default class DayPickerInput extends React.Component {
     }
     const Overlay = this.props.overlayComponent;
     return (
-      <span
+      <Overlay
+        classNames={classNames}
+        month={this.state.month}
+        selectedDay={selectedDay}
+        input={this.input}
+        tabIndex={0} // tabIndex is necessary to catch focus/blur events on Safari
         onFocus={this.handleOverlayFocus}
-        ref={el => (this.overlayNode = el)}
         onBlur={this.handleOverlayBlur}
       >
-        <Overlay
-          classNames={classNames}
+        <DayPicker
+          ref={el => (this.daypicker = el)}
+          onTodayButtonClick={onTodayButtonClick}
+          {...dayPickerProps}
           month={this.state.month}
-          selectedDay={selectedDay}
-          input={this.input}
-        >
-          <DayPicker
-            ref={el => (this.daypicker = el)}
-            onTodayButtonClick={onTodayButtonClick}
-            {...dayPickerProps}
-            month={this.state.month}
-            selectedDays={selectedDay}
-            onDayClick={this.handleDayClick}
-            onMonthChange={this.handleMonthChange}
-          />
-        </Overlay>
-      </span>
+          selectedDays={selectedDay}
+          onDayClick={this.handleDayClick}
+          onMonthChange={this.handleMonthChange}
+        />
+      </Overlay>
     );
   }
 
   render() {
     const Input = this.props.component;
+    const { inputProps } = this.props;
     return (
       <div className={this.props.classNames.container}>
         <Input
           ref={el => (this.input = el)}
           placeholder={this.props.placeholder}
-          {...this.props.inputProps}
+          {...inputProps}
           value={this.state.value}
           onChange={this.handleInputChange}
           onFocus={this.handleInputFocus}
           onBlur={this.handleInputBlur}
           onKeyDown={this.handleInputKeyDown}
           onKeyUp={this.handleInputKeyUp}
-          onClick={this.handleInputClick}
+          onClick={!inputProps.disabled ? this.handleInputClick : undefined}
         />
         {this.state.showOverlay && this.renderOverlay()}
       </div>

@@ -35,6 +35,21 @@ describe('DateUtils', () => {
     });
   });
 
+  describe('isDate', () => {
+    it('should detect a valid date', () =>
+      expect(DateUtils.isDate(new Date())).toBe(true));
+    it('should detect invalid date from String', () =>
+      expect(DateUtils.isDate('x')).toBe(false));
+    it('should detect invalid date from Object', () =>
+      expect(DateUtils.isDate({})).toBe(false));
+    it('should detect invalid date from Array', () =>
+      expect(DateUtils.isDate([])).toBe(false));
+    it('should detect invalid date from `undefined`', () =>
+      expect(DateUtils.isDate(undefined)).toBe(false));
+    it('should detect invalid date from `null`', () =>
+      expect(DateUtils.isDate(null)).toBe(false));
+  });
+
   describe('isDayBefore', () => {
     it('returns true when the day is before the other day', () => {
       const day1 = new Date(2015, 10, 11, 5, 25);
@@ -94,6 +109,26 @@ describe('DateUtils', () => {
       const day1 = new Date(2015, 8, 12);
       const isSameDay = DateUtils.isSameDay(day1, null);
       expect(isSameDay).toBe(false);
+    });
+  });
+
+  describe('isSameMonth', () => {
+    it('returns true if two days differ only by time', () => {
+      const day1 = new Date(2015, 10, 11, 5, 25);
+      const day2 = new Date(2015, 10, 11, 7, 40);
+      const isSameMonth = DateUtils.isSameMonth(day1, day2);
+      expect(isSameMonth).toBe(true);
+    });
+    it('returns true for different days', () => {
+      const day1 = new Date(2015, 8, 12);
+      const day2 = new Date(2015, 8, 11);
+      const isSameMonth = DateUtils.isSameMonth(day1, day2);
+      expect(isSameMonth).toBe(true);
+    });
+    it('returns false if one of the days is not specified', () => {
+      const day1 = new Date(2015, 8, 12);
+      const isSameMonth = DateUtils.isSameMonth(day1, null);
+      expect(isSameMonth).toBe(false);
     });
   });
 

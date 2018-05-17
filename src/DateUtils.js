@@ -10,6 +10,17 @@ export function clone(d) {
 }
 
 /**
+ * Return `true` if the passed value is a valid JavaScript Date object.
+ *
+ * @export
+ * @param {any} value
+ * @returns {Boolean}
+ */
+export function isDate(value) {
+  return value instanceof Date && !isNaN(value.valueOf());
+}
+
+/**
  * Return `d` as a new date with `n` months added.
  *
  * @export
@@ -38,6 +49,23 @@ export function isSameDay(d1, d2) {
     d1.getDate() === d2.getDate() &&
     d1.getMonth() === d2.getMonth() &&
     d1.getFullYear() === d2.getFullYear()
+  );
+}
+
+/**
+ * Return `true` if two dates fall in the same month.
+ *
+ * @export
+ * @param  {Date}  d1
+ * @param  {Date}  d2
+ * @return {Boolean}
+ */
+export function isSameMonth(d1, d2) {
+  if (!d1 || !d2) {
+    return false;
+  }
+  return (
+    d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear()
   );
 }
 
@@ -187,6 +215,7 @@ export default {
   addMonths,
   clone,
   getWeekNumber,
+  isDate,
   isDayAfter,
   isDayBefore,
   isDayBetween,
@@ -194,4 +223,5 @@ export default {
   isFutureDay,
   isPastDay,
   isSameDay,
+  isSameMonth,
 };
